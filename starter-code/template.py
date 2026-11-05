@@ -136,6 +136,53 @@ def call_gemini(
     
 
 
+    api_key=os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        api_key="mock-key"
+    
+
+    start_time = time.time()
+
+    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+
+
+    response = client.models.generate_content(
+        model=model,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            temperature=temperature,
+            top_p=top_p,
+            max_output_tokens=max_tokens
+        )
+    )
+
+
+
+    end_time = time.time()
+    latency_seconds = end_time - start_time
+
+    metadata = response.usage_metadata
+
+    response_text = response.candidates[0].content.parts[0].text
+    usage = {
+        "input_tokens": metadata.prompt_token_count,
+        "output_tokens": metadata.candidates_token_count
+    }
+
+
+    return(response_text, latency_seconds, usage)
+
+
+
+
+
+
+
+
+
+
+
 
     """
     Call the Google Gemini API (using Gemini 2.5 Flash as standard) and return
@@ -184,6 +231,17 @@ def call_anthropic(
     top_p: float = 0.9,
     max_tokens: int = 256,
 ) -> tuple[str, float, dict]:
+
+    
+
+
+
+
+
+
+
+
+
     """
     Call the Anthropic Claude API (using Claude 3.5 Haiku as default) and return
     the response text, latency, and token usage stats.
