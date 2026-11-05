@@ -12,6 +12,17 @@ Instructions:
 import os
 import time
 from typing import Any, Callable
+from dotenv import load_dotenv
+
+from openai import OpenAI
+from google import genai
+from google.genai import types
+
+
+
+load_dotenv()
+
+
 
 # ---------------------------------------------------------------------------
 # Estimated costs per 1M INPUT & OUTPUT tokens (USD) as of March 2026
@@ -29,7 +40,7 @@ PRICING_1M_TOKENS = {
 # Standard Model Identifiers
 OPENAI_MODEL = "gpt-4o"
 OPENAI_MINI_MODEL = "gpt-4o-mini"
-GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_MODEL = "gemini-3.8-flash"
 ANTHROPIC_MODEL = "claude-3-5-haiku"
 
 
@@ -43,6 +54,46 @@ def call_openai(
     top_p: float = 0.9,
     max_tokens: int = 256,
 ) -> tuple[str, float, dict]:
+
+    api_key=os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        api_key="mock-key"
+
+    messages=[{"role": "user", "content": prompt}]
+
+    return 0
+
+    client = OpenAI(api_key=api_key)
+    start_time = time.time()
+
+    response = client.chat.completions.create(
+        model=model,
+        temperature=temperature,
+        top_p=top_p,
+        max_tokens=max_tokens,
+        messages=messages
+    )
+
+    end_time = time.time()
+
+
+    response_text = response.choices[0].message.content
+    latency_seconds = end_time - start_time
+    usage = {
+        "input_tokens": response.usage.prompt_tokens,
+        "output_tokens": response.usage.completion_tokens
+    }
+
+    # print(response_text)
+    # print(latency_seconds)
+    # print(usage)
+
+    return(response_text, latency_seconds, usage)
+
+
+
+
+    
     """
     Call the OpenAI Chat Completions API and return the response text, latency,
     and token usage stats.
@@ -67,7 +118,9 @@ def call_openai(
     """
     # TODO: Import OpenAI, instantiate client, call chat.completions.create with parameters,
     #       measure execution start/end time, extract text and token usage, and return them.
-    raise NotImplementedError("Implement call_openai")
+
+
+    
 
 
 # ---------------------------------------------------------------------------
@@ -80,6 +133,10 @@ def call_gemini(
     top_p: float = 0.9,
     max_tokens: int = 256,
 ) -> tuple[str, float, dict]:
+    
+
+
+
     """
     Call the Google Gemini API (using Gemini 2.5 Flash as standard) and return
     the response text, latency, and token usage stats.
@@ -115,7 +172,6 @@ def call_gemini(
     """
     # TODO: Initialize Gemini client, set config parameters, call generate_content,
     #       measure latency, extract response text and usage metadata, and return the tuple.
-    raise NotImplementedError("Implement call_gemini")
 
 
 # ---------------------------------------------------------------------------
@@ -271,22 +327,30 @@ def format_comparison_table(results: list[dict]) -> str:
 # Entry point for manual testing
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
+
+
     print("=== Model Comparison Test ===")
     test_prompt = "Hãy giải thích sự khác biệt giữa temperature và top_p bằng tiếng Việt ngắn gọn trong 2 câu."
-    try:
-        # Note: Requires valid API keys set in environment variables
-        result = compare_models(test_prompt)
-        for model_name, stats in result.items():
-            print(f"\n[{model_name.upper()}]")
-            print(f"Latency: {stats['latency']:.2f}s | Cost: ${stats['cost']:.6f}")
-            print(f"Tokens: {stats['input_tokens']} in / {stats['output_tokens']} out")
-            print(f"Response: {stats['response']}")
-    except Exception as e:
-        print(f"Skipping live API comparison test: {e}")
-        print("Set your API keys to run manual tests.")
 
-    print("\n=== Starting Gemini 2.5 Chatbot (type 'quit' to exit) ===")
-    try:
-        streaming_chatbot()
-    except Exception as e:
-        print(f"Chatbot failed to start: {e}")
+
+    call_gemini(test_prompt)
+
+
+
+    # try:
+    #     # Note: Requires valid API keys set in environment variables
+    #     result = compare_models(test_prompt)
+    #     for model_name, stats in result.items():
+    #         print(f"\n[{model_name.upper()}]")
+    #         print(f"Latency: {stats['latency']:.2f}s | Cost: ${stats['cost']:.6f}")
+    #         print(f"Tokens: {stats['input_tokens']} in / {stats['output_tokens']} out")
+    #         print(f"Response: {stats['response']}")
+    # except Exception as e:
+    #     print(f"Skipping live API comparison test: {e}")
+    #     print("Set your API keys to run manual tests.")
+
+    # print("\n=== Starting Gemini 2.5 Chatbot (type 'quit' to exit) ===")
+    # try:
+    #     streaming_chatbot()
+    # except Exception as e:
+    #     print(f"Chatbot failed to start: {e}")
