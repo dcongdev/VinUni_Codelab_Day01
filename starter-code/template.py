@@ -361,7 +361,68 @@ def compare_models(prompt: str) -> dict:
 # ---------------------------------------------------------------------------
 # Task 5 — Streaming chatbot with Gemini 2.5 (Focus Model)
 # ---------------------------------------------------------------------------
+
+
 def streaming_chatbot() -> None:
+    api_key = os.getenv("GEMINI_API_KEY")
+
+    if not api_key:
+        raise ValueError("Missing GEMINI_API_KEY")
+
+    client = genai.Client(api_key=api_key)
+
+
+    history = []
+
+    print("=== Gemini Streaming Chatbot ===")
+    print("Type 'quit' or 'exit' to stop.\n")
+
+    while True:
+        
+        user_input = input("You: ").strip()
+
+        if user_input.lower() in ["quit", "exit"]:
+            print("Bye!")
+            break
+
+        if not user_input:
+            continue
+
+        user_message = {
+            "role": "user",
+            "parts": [{"text": user_input}]
+        }
+
+        formatted_history = history + [user_message]
+
+  
+        response_stream = client.models.generate_content_stream(
+            model=GEMINI_MODEL,
+            contents=formatted_history
+        )
+
+   
+        print("Gemini: ", end="", flush=True)
+
+        response_text = ""
+
+        for chunk in response_stream:
+            if chunk.text:
+                print(chunk.text, end="", flush=True)
+                response_text += chunk.text
+
+        print("\n")
+
+        history.append(user_message)
+
+        history.append({
+            "role": "model",
+            "parts": [{"text": response_text}]
+        })
+
+        history = history[-6:]
+
+
     """
     Run an interactive streaming chatbot in the terminal using Gemini 2.5.
 
@@ -376,7 +437,6 @@ def streaming_chatbot() -> None:
         - Keep history limited to the last 3 turns to optimize context window and costs.
     """
     # TODO: Setup interactive session, prompt user for input, stream response, and update history.
-    raise NotImplementedError("Implement streaming_chatbot")
 
 
 # ---------------------------------------------------------------------------
@@ -447,25 +507,24 @@ def format_comparison_table(results: list[dict]) -> str:
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
 
+    
+    # print("=== Model Comparison Test ===")
+    # test_prompt = "Hãy giải thích sự khác biệt giữa temperature và top_p bằng tiếng Việt ngắn gọn trong 2 câu."
 
-    print("=== Model Comparison Test ===")
-    test_prompt = "Hãy giải thích sự khác biệt giữa temperature và top_p bằng tiếng Việt ngắn gọn trong 2 câu."
 
+    # try:
+    #     # Note: Requires valid API keys set in environment variables
+    #     result = compare_models(test_prompt)
+    #     for model_name, stats in result.items():
+    #         print(f"\n[{model_name.upper()}]")
+    #         print(f"Latency: {stats['latency']:.2f}s | Cost: ${stats['cost']:.6f}")
+    #         print(f"Tokens: {stats['input_tokens']} in / {stats['output_tokens']} out")
+    #         print(f"Response: {stats['response']}")
+    # except Exception as e:
+    #     print(f"Skipping live API comparison test: {e}")
+    #     print("Set your API keys to run manual tests.")
 
-
-    try:
-        # Note: Requires valid API keys set in environment variables
-        result = compare_models(test_prompt)
-        for model_name, stats in result.items():
-            print(f"\n[{model_name.upper()}]")
-            print(f"Latency: {stats['latency']:.2f}s | Cost: ${stats['cost']:.6f}")
-            print(f"Tokens: {stats['input_tokens']} in / {stats['output_tokens']} out")
-            print(f"Response: {stats['response']}")
-    except Exception as e:
-        print(f"Skipping live API comparison test: {e}")
-        print("Set your API keys to run manual tests.")
-
-    print("\n=== Starting Gemini 2.5 Chatbot (type 'quit' to exit) ===")
+    print("\n=== Starting Gemini 3.8 Chatbot (type 'quit' to exit) ===")
     try:
         streaming_chatbot()
     except Exception as e:
