@@ -447,59 +447,73 @@ def retry_with_backoff(
     max_retries: int = 3,
     base_delay: float = 0.1,
 ) -> Any:
-    """
-    Call fn(). If it raises an exception, retry up to max_retries times
-    with exponential backoff (delay = base_delay * 2^attempt).
 
-    Args:
-        fn:          Zero-argument callable to execute.
-        max_retries: Maximum number of retry attempts.
-        base_delay:  Initial delay in seconds before the first retry.
+    for attempt in range(max_retries + 1):
+        try:
+            return fn()
 
-    Returns:
-        The return value of fn() on success.
+        except Exception:
+            if attempt == max_retries:
+                raise
 
-    Raises:
-        The last exception raised by fn() after all retries are exhausted.
-    """
-    # TODO: implement retry loop with exponential backoff
-    raise NotImplementedError("Implement retry_with_backoff")
+            delay = base_delay * (2 ** attempt)
+            time.sleep(delay)
 
 
+            
 # ---------------------------------------------------------------------------
 # Bonus Task B — Batch compare
 # ---------------------------------------------------------------------------
 def batch_compare(prompts: list[str]) -> list[dict]:
-    """
-    Run compare_models on each prompt in the list.
+    results = []
 
-    Args:
-        prompts: List of prompt strings.
+    for prompt in prompts:
+        comparison = compare_models(prompt)
+        comparison["prompt"] = prompt
+        results.append(comparison)
 
-    Returns:
-        List of dicts, each being the compare_models result with an extra
-        key "prompt" containing the original prompt string.
-    """
-    # TODO: iterate over prompts, call compare_models, and inject the original "prompt".
-    raise NotImplementedError("Implement batch_compare")
+    return results
 
 
 # ---------------------------------------------------------------------------
 # Bonus Task C — Format comparison table
 # ---------------------------------------------------------------------------
 def format_comparison_table(results: list[dict]) -> str:
-    """
-    Format a list of batch compare results as a readable Markdown table string.
+    lines = [
+        "| Prompt | Model | Response (truncated) | Latency | Tokens (In/Out) | Cost (USD) |",
+        "|---|---|---|---|---|---|"
+    ]
 
-    Args:
-        results: List of dicts as returned by batch_compare.
+    for result in results:
+        prompt = result["prompt"]
 
-    Returns:
-        A beautiful Markdown table string with columns:
-        | Prompt | Model | Response (truncated) | Latency | Tokens (In/Out) | Cost (USD) |
-    """
-    # TODO: Build and return the formatted table string. Truncate response to 50 chars for clean display.
-    raise NotImplementedError("Implement format_comparison_table")
+        for model, stats in result.items():
+            if model == "prompt":
+                continue
+
+            response = str(stats["response"]).replace("\n", " ")
+            response = response.replace("|", "\\|")
+
+            if len(response) > 50:
+                response = response[:47] + "..."
+
+            latency = stats["latency"]
+            input_tokens = stats["input_tokens"]
+            output_tokens = stats["output_tokens"]
+            cost = stats["cost"]
+
+            row = (
+                f"| {prompt.replace('|', chr(92) + '|')} "
+                f"| {model} "
+                f"| {response} "
+                f"| {latency:.2f}s "
+                f"| {input_tokens}/{output_tokens} "
+                f"| ${cost:.6f} |"
+            )
+
+            lines.append(row)
+
+    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
@@ -508,21 +522,21 @@ def format_comparison_table(results: list[dict]) -> str:
 if __name__ == "__main__":
 
     
-    # print("=== Model Comparison Test ===")
-    # test_prompt = "Hãy giải thích sự khác biệt giữa temperature và top_p bằng tiếng Việt ngắn gọn trong 2 câu."
+    print("=== Model Comparison Test ===")
+    test_prompt = "Hãy giải thích sự khác biệt giữa temperature và top_p bằng tiếng Việt ngắn gọn trong 2 câu."
 
 
-    # try:
-    #     # Note: Requires valid API keys set in environment variables
-    #     result = compare_models(test_prompt)
-    #     for model_name, stats in result.items():
-    #         print(f"\n[{model_name.upper()}]")
-    #         print(f"Latency: {stats['latency']:.2f}s | Cost: ${stats['cost']:.6f}")
-    #         print(f"Tokens: {stats['input_tokens']} in / {stats['output_tokens']} out")
-    #         print(f"Response: {stats['response']}")
-    # except Exception as e:
-    #     print(f"Skipping live API comparison test: {e}")
-    #     print("Set your API keys to run manual tests.")
+    try:
+        # Note: Requires valid API keys set in environment variables
+        result = compare_models(test_prompt)
+        for model_name, stats in result.items():
+            print(f"\n[{model_name.upper()}]")
+            print(f"Latency: {stats['latency']:.2f}s | Cost: ${stats['cost']:.6f}")
+            print(f"Tokens: {stats['input_tokens']} in / {stats['output_tokens']} out")
+            print(f"Response: {stats['response']}")
+    except Exception as e:
+        print(f"Skipping live API comparison test: {e}")
+        print("Set your API keys to run manual tests.")
 
     print("\n=== Starting Gemini 3.8 Chatbot (type 'quit' to exit) ===")
     try:
