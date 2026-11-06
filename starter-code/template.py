@@ -57,14 +57,14 @@ def call_openai(
 
     api_key=os.getenv("OPENAI_API_KEY")
     if not api_key:
-        api_key="mock-key"
+        raise ValueError("Missing OPENAI_API_KEY")
 
     messages=[{"role": "user", "content": prompt}]
 
-    return 0
-
     client = OpenAI(api_key=api_key)
     start_time = time.time()
+
+    print("run openai")
 
     response = client.chat.completions.create(
         model=model,
@@ -134,8 +134,6 @@ def call_gemini(
     max_tokens: int = 256,
 ) -> tuple[str, float, dict]:
     
-
-
     api_key=os.getenv("GEMINI_API_KEY")
     if not api_key:
         api_key="mock-key"
@@ -145,7 +143,7 @@ def call_gemini(
 
     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-
+    print("run gemini")
 
     response = client.models.generate_content(
         model=model,
@@ -298,10 +296,45 @@ def call_anthropic(
     #       extract content text and usage statistics, and return the tuple.
 
 
+def get_model_stats(prompt, model):
+
+    if model.startswith("gemini"):
+        text, latency, usage = call_gemini(prompt, model)
+    else:
+        text, latency, usage = call_openai(prompt, model)
+    
+    # Gpt4o
+    input_tokens = usage["input_tokens"]
+    output_tokens = usage["output_tokens"]
+
+    input_rate = PRICING_1M_TOKENS[model]["input"]
+    output_rate = PRICING_1M_TOKENS[model]["output"]
+
+
+    cost = (input_tokens*input_rate + output_tokens*output_rate)/1000000
+
+    return {
+        "response": text,
+        "latency": latency,
+        "cost": cost,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens
+    }
+
 # ---------------------------------------------------------------------------
 # Task 4 — Compare Models (OpenAI GPT-4o vs OpenAI Mini vs Gemini 2.5 Flash)
 # ---------------------------------------------------------------------------
 def compare_models(prompt: str) -> dict:
+
+    result = {
+        "gpt4o": get_model_stats(prompt, OPENAI_MODEL),
+        "gpt4o_mini": get_model_stats(prompt, OPENAI_MINI_MODEL),
+        "gemini_flash": get_model_stats(prompt, GEMINI_MODEL)
+    }
+ 
+    return result
+
+
     """
     Call OpenAI (gpt-4o), OpenAI Mini (gpt-4o-mini), and Gemini 2.5 Flash (gemini-2.5-flash)
     with the same prompt and return a structured comparison dictionary.
@@ -323,7 +356,6 @@ def compare_models(prompt: str) -> dict:
     # TODO: Calculate costs exactly based on input and output token counts using PRICING_1M_TOKENS
     #       Formula: Cost = (input_tokens * input_rate_per_1M + output_tokens * output_rate_per_1M) / 1,000,000
     # TODO: Assemble and return the comparison dictionary.
-    raise NotImplementedError("Implement compare_models")
 
 
 # ---------------------------------------------------------------------------
@@ -420,24 +452,21 @@ if __name__ == "__main__":
     test_prompt = "Hãy giải thích sự khác biệt giữa temperature và top_p bằng tiếng Việt ngắn gọn trong 2 câu."
 
 
-    call_gemini(test_prompt)
 
+    try:
+        # Note: Requires valid API keys set in environment variables
+        result = compare_models(test_prompt)
+        for model_name, stats in result.items():
+            print(f"\n[{model_name.upper()}]")
+            print(f"Latency: {stats['latency']:.2f}s | Cost: ${stats['cost']:.6f}")
+            print(f"Tokens: {stats['input_tokens']} in / {stats['output_tokens']} out")
+            print(f"Response: {stats['response']}")
+    except Exception as e:
+        print(f"Skipping live API comparison test: {e}")
+        print("Set your API keys to run manual tests.")
 
-
-    # try:
-    #     # Note: Requires valid API keys set in environment variables
-    #     result = compare_models(test_prompt)
-    #     for model_name, stats in result.items():
-    #         print(f"\n[{model_name.upper()}]")
-    #         print(f"Latency: {stats['latency']:.2f}s | Cost: ${stats['cost']:.6f}")
-    #         print(f"Tokens: {stats['input_tokens']} in / {stats['output_tokens']} out")
-    #         print(f"Response: {stats['response']}")
-    # except Exception as e:
-    #     print(f"Skipping live API comparison test: {e}")
-    #     print("Set your API keys to run manual tests.")
-
-    # print("\n=== Starting Gemini 2.5 Chatbot (type 'quit' to exit) ===")
-    # try:
-    #     streaming_chatbot()
-    # except Exception as e:
-    #     print(f"Chatbot failed to start: {e}")
+    print("\n=== Starting Gemini 2.5 Chatbot (type 'quit' to exit) ===")
+    try:
+        streaming_chatbot()
+    except Exception as e:
+        print(f"Chatbot failed to start: {e}")
