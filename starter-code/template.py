@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from google import genai
 from google.genai import types
-
+import anthropic
 
 
 load_dotenv()
@@ -233,10 +233,40 @@ def call_anthropic(
 ) -> tuple[str, float, dict]:
 
     
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    client = anthropic.Anthropic(api_key=api_key)
 
 
+    start_time = time.time()
+
+    response = client.messages.create(
+        model=model,
+        max_tokens=max_tokens,
+        messages=[
+            {"role": "user", "content": prompt}
+        ]
+    )
+
+    response = client.messages.create(
+    model=model,
+    max_tokens=max_tokens,
+    messages=[
+        {"role": "user", "content": prompt}
+    ])
+
+    end_time = time.time()
+    latency_seconds = end_time - start_time
 
 
+    response_text = response.content[0].text
+    usage = {
+    "input_tokens": response.usage.input_tokens,
+    "output_tokens": response.usage.output_tokens
+    }
+
+
+    return(response_text, latency_seconds, usage)
+    
 
 
 
@@ -266,7 +296,6 @@ def call_anthropic(
     """
     # TODO: Initialize Anthropic client, create message, measure latency,
     #       extract content text and usage statistics, and return the tuple.
-    raise NotImplementedError("Implement call_anthropic")
 
 
 # ---------------------------------------------------------------------------
